@@ -19,8 +19,8 @@ SESSIONS = [
     ("사전", "수강 전에", [
         ("프로필 카드 — 창업 준비자 김하늘", "files/프로필카드_창업준비자_김하늘.md",
          "과정 내내 이 사람의 담당자로 실습합니다. 빈칸 5종이 그대로 실습 재료입니다.", "ready"),
-        ("도구 설치 안내", "files/설치안내.md",
-         "코드 에이전트 설치·로그인은 수강 전에 끝내 둡니다. 실습 도구 2종은 당일 함께 설치합니다.", "ready"),
+        ("에이전트 설치 안내 (화면 그대로 따라 하기)", "설치안내.html",
+         "이것 하나만 미리 준비하면 됩니다. Claude Code(유료) / Antigravity IDE(무료) 두 갈래 · 스크린샷 안내.", "page"),
     ]),
     ("S1~S3", "이해·질문 / 문서·조사 / 덱·첫걸음", [
         ("프롬프트 4요소 카드", None, "맥락·역할·예시·제약 한 장 요약.", "soon"),
@@ -50,7 +50,11 @@ blocks = ""
 for tag, name, items in SESSIONS:
     rows = ""
     for title, href, desc, state in items:
-        if state == "ready" and href:
+        if state == "page" and href:
+            rows += (f'<a class="item" href="{href}">'
+                     f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
+                     f'<em class="get">열기</em></a>')
+        elif state == "ready" and href:
             rows += (f'<a class="item" href="{href}" download>'
                      f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
                      f'<em class="get">내려받기</em></a>')
