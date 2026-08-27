@@ -3,8 +3,10 @@
 import pathlib, html as H, json
 
 HERE = pathlib.Path(__file__).parent
-SKIN = HERE.parent.parent / "projects" / "제안자동화" / "decks" / "venue-AI인터시스" / "skin.json"
-C = json.loads(SKIN.read_text(encoding="utf-8"))["colors"]
+# 색은 저장소 안 skin.json에서 읽는다 — 강의 덱 스킨의 사본이고, 갱신은 강의 저장소의
+# 동기화 스크립트가 한다. 여기서 바깥 경로를 참조하면 ⑴이 저장소만 clone한 사람은
+# 빌드가 안 되고 ⑵경로에 든 현장 정보가 공개된다(연장통 규약 "현장 한정 정보 금지").
+C = json.loads((HERE / "skin.json").read_text(encoding="utf-8"))["colors"]
 ASOF = "2026-08-08"
 
 

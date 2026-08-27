@@ -1,0 +1,14 @@
+{
+  "_note": "강의 덱 스킨에서 뽑아 온 색 팔레트 사본. 페이지가 덱과 톤을 맞추기 위한 것이고, 여기만 고치면 덱과 어긋난다 — 갱신은 강의 저장소의 동기화 스크립트가 한다.",
+  "colors": {
+    "ink": "2B241F",
+    "tab": "6E4F3A",
+    "accent": "C4472C",
+    "accent_deep": "A63A22",
+    "accent_wash": "FBEEE9",
+    "bg": "ECE9E2",
+    "paper": "FFFFFF",
+    "gray_text": "7A6F63",
+    "line": "DBD4C8"
+  }
+}
