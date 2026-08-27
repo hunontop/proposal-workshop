@@ -1,6 +1,6 @@
 # 실습 자료 배포 페이지 생성 (GitHub Pages용 index.html)
 # 전례 = _검정제출/배포/_build.py · 색은 덱 skin.json에서 읽어 톤을 자동 일치시킨다.
-import pathlib, html as H, json
+import pathlib, html as H, json, re
 
 HERE = pathlib.Path(__file__).parent
 SKIN = HERE.parent.parent / "projects" / "제안자동화" / "decks" / "venue-AI인터시스" / "skin.json"
@@ -12,6 +12,47 @@ def hx(k):
 
 
 SITE = "https://hunontop.github.io/proposal-workshop/"
+
+# ── 프롬프트 복사 블록 ────────────────────────────────────────────────────
+# 연장통 정책(공유뇌 ref/교안/연장통): 담는 것 = "프롬프트 원문(복붙)".
+# 짧은 프롬프트를 내려받게 하면 붙여넣기까지 손이 하나 더 든다 →
+# **복사 버튼이 1순위, 내려받기는 원문 보관용**(2026-08-27 결정).
+# 라벨은 md에서 블록 바로 앞의 ##/### 제목을 주워 쓴다 — 파일을 고치면 따라온다.
+
+# 표준 복사(클립보드) 아이콘 + 성공 체크. 인라인 SVG — 외부 의존 0(연장통 규약).
+IC_COPY = ('<svg class="ic ic-c" viewBox="0 0 24 24" width="14" height="14" fill="none" '
+           'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+           'aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/>'
+           '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>')
+IC_DONE = ('<svg class="ic ic-d" viewBox="0 0 24 24" width="14" height="14" fill="none" '
+           'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" '
+           'aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>')
+
+_FENCE = re.compile(r"\n```[^\n]*\n(.*?)\n```", re.S)
+_HEAD = re.compile(r"^#{2,3}\s+(.+?)\s*$", re.M)
+
+
+def _label(raw, fallback):
+    if not raw:
+        return fallback
+    s = re.sub(r"[`*]", "", raw).strip()
+    s = re.sub(r"^\d+\.\s*", "", s)          # "1. 잘 깔렸는지" → "잘 깔렸는지"
+    s = re.split(r"\s+—\s+", s)[0].strip()    # "빈 양식 — 복사해서" → "빈 양식"
+    return s or fallback
+
+
+def copy_blocks(rel):
+    """md 파일에서 (라벨, 본문) 코드블록을 뽑는다. 없으면 []."""
+    f = HERE / rel
+    if not f.is_file():
+        return []
+    md = f.read_text(encoding="utf-8")
+    out = []
+    for m in _FENCE.finditer(md):
+        heads = _HEAD.findall(md[:m.start()])
+        out.append((_label(heads[-1] if heads else None, "프롬프트 전체"), m.group(1)))
+    return out
+
 
 # ── 세션별 자료 ────────────────────────────────────────────────────────────
 # state: ready = 지금 내려받을 수 있음 / soon = 개설 전 준비 중
@@ -50,28 +91,40 @@ SESSIONS = [
     ]),
 ]
 
+CLIP = []          # 페이지에 심는 복사 대상 원문 (자기완결 — 외부 의존 0)
 blocks = ""
 for tag, name, items in SESSIONS:
     rows = ""
     for title, href, desc, state in items:
+        cps = copy_blocks(href) if (state == "ready" and href) else []
+        btns = ""
+        for lab, body in cps:
+            btns += (f'<button class="cp" type="button" data-i="{len(CLIP)}" '
+                     f'title="복사: {H.escape(lab)}" aria-label="복사: {H.escape(lab)}">'
+                     f'{IC_COPY}{IC_DONE}<span class="lb">{H.escape(lab)}</span></button>')
+            CLIP.append(body)
+        crow = f'<div class="copyrow">{btns}</div>' if btns else ""
+
         if state == "page" and href:
-            rows += (f'<a class="item" href="{href}">'
-                     f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
-                     f'<em class="get">열기</em></a>')
+            act = f'<a class="get" href="{href}">열기</a>'
         elif state == "ready" and href:
-            rows += (f'<a class="item" href="{href}" download>'
-                     f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
-                     f'<em class="get">내려받기</em></a>')
+            # 복사 블록이 있으면 내려받기는 원문 보관용으로 물러난다
+            cls = "sub" if btns else "get"
+            act = f'<a class="{cls}" href="{href}" download>원문</a>' if btns else                   f'<a class="get" href="{href}" download>내려받기</a>'
         else:
-            rows += (f'<div class="item soon">'
-                     f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
-                     f'<em class="wait">준비 중</em></div>')
+            act = '<em class="wait">준비 중</em>'
+
+        soon = " soon" if not (state in ("ready", "page") and href) else ""
+        rows += (f'<div class="item{soon}">'
+                 f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
+                 f'<div class="acts">{act}</div>{crow}</div>')
     blocks += f"""
 <section class="ses">
   <div class="shead"><span class="stag">{H.escape(tag)}</span><h2>{H.escape(name)}</h2></div>
   <div class="items">{rows}</div>
 </section>"""
 
+clip_json = json.dumps(CLIP, ensure_ascii=False)
 doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>실습 자료 — AI 기초부터 업무 자동화까지</title>
@@ -103,11 +156,29 @@ a.item{{transition:.15s}}
 a.item:hover{{border-color:var(--accent);background:var(--wash);transform:translateY(-1px)}}
 .item b{{font-size:15.5px;grid-column:1}}
 .item span{{grid-column:1;color:var(--gray);font-size:13.5px}}
-.item em{{grid-column:2;grid-row:1/3;font-style:normal;font-size:12.5px;font-weight:700;
- padding:6px 14px;border-radius:6px;white-space:nowrap}}
+.acts{{grid-column:2;grid-row:1/3;display:flex;align-items:center}}
+.item em,.acts a{{font-style:normal;font-size:12.5px;font-weight:700;text-decoration:none;
+ padding:6px 14px;border-radius:6px;white-space:nowrap;display:inline-block}}
 .get{{background:var(--accent);color:#fff}}
+a.get:hover{{filter:brightness(1.08)}}
+.sub{{background:transparent;color:var(--gray);border:1px solid var(--line)}}
+a.sub:hover{{border-color:var(--accent);color:var(--accent)}}
 .wait{{background:var(--bg);color:var(--gray);border:1px dashed var(--line)}}
 .item.soon{{opacity:.72}}
+/* 복사 버튼 — 짧은 프롬프트의 1순위 동선 */
+.copyrow{{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+ margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}}
+.cp{{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:13px;font-weight:700;
+ cursor:pointer;color:var(--accent-deep);background:var(--wash);border:1px solid var(--line);
+ border-radius:999px;padding:6px 14px 6px 12px;transition:.13s;line-height:1.3}}
+.cp:hover{{border-color:var(--accent);background:#fff}}
+.cp:active{{transform:translateY(1px)}}
+.cp:focus-visible{{outline:2px solid var(--accent);outline-offset:2px}}
+.cp .ic{{flex:0 0 auto;display:block}}
+.cp .ic-d{{display:none}}
+.cp.done{{background:var(--accent);border-color:var(--accent);color:#fff}}
+.cp.done .ic-c{{display:none}}
+.cp.done .ic-d{{display:block}}
 h3{{font-size:18px;margin:38px 0 10px}}
 footer{{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);color:var(--gray);font-size:13px}}
 </style></head><body><div class="wrap">
@@ -119,10 +190,12 @@ footer{{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);color:
 
 <div class="note">
   <b>쓰는 법</b><br>
-  세션마다 필요한 자료를 그때 내려받으면 됩니다. 미리 다 받아 둘 필요는 없습니다.<br>
+  세션마다 필요한 것만 그때 쓰면 됩니다. 미리 다 받아 둘 필요는 없습니다.<br>
+  <b>프롬프트는 「복사」 버튼</b>으로 바로 가져가 붙여 넣으세요 — 내려받지 않아도 됩니다. 「원문」은 나중에 다시 볼 때 쓰는 보관용입니다.<br>
   <b>사전 자료 하나는 예외입니다</b> — 프로필 카드는 <b>시작하기 전에</b> 열어 보세요. 과정 내내 그 사람의 담당자로 실습합니다.
 </div>
 {blocks}
+<script type="application/json" id="clip">{clip_json}</script>
 
 <h3>레퍼런스 이미지는 각자 준비하세요</h3>
 <div class="note">
@@ -135,9 +208,34 @@ footer{{margin-top:52px;padding-top:22px;border-top:1px solid var(--line);color:
   최상훈 · AI Educator &amp; AX Consultant<br>
   이 페이지의 양식·프롬프트는 작성자 본인이 제작했습니다. 실습대상 프로필은 가상 인물입니다.
 </footer>
-</div></body></html>"""
+</div>
+<script>
+(function(){{
+  var T = JSON.parse(document.getElementById("clip").textContent);
+  function put(s){{
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(s);
+    var a = document.createElement("textarea");            // file:// · 구형 폴백
+    a.value = s; a.setAttribute("readonly", "");
+    a.style.cssText = "position:fixed;top:-9999px";
+    document.body.appendChild(a); a.select();
+    try {{ document.execCommand("copy"); }} finally {{ document.body.removeChild(a); }}
+    return Promise.resolve();
+  }}
+  document.addEventListener("click", function(e){{
+    var b = e.target.closest(".cp"); if (!b) return;
+    var lb = b.querySelector(".lb");
+    if (b.classList.contains("done")) return;          // 연타 중 라벨이 굳는 것을 막는다
+    put(T[+b.dataset.i]).then(function(){{
+      var was = lb.textContent;
+      lb.textContent = "복사됨"; b.classList.add("done");
+      setTimeout(function(){{ lb.textContent = was; b.classList.remove("done"); }}, 1400);
+    }});
+  }});
+}})();
+</script>
+</body></html>"""
 
 (HERE / "index.html").write_text(doc, encoding="utf-8")
 ready = sum(1 for _, _, items in SESSIONS for *_, s in items if s == "ready")
 soon = sum(1 for _, _, items in SESSIONS for *_, s in items if s == "soon")
-print(f"OK index.html {len(doc)} bytes · 내려받기 {ready}건 · 준비 중 {soon}건 · {SITE}")
+print(f"OK index.html {len(doc.encode()):,} bytes · 자료 {ready}건 · 복사 버튼 {len(CLIP)}개 · 준비 중 {soon}건")
