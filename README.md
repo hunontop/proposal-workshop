@@ -2,7 +2,8 @@
 
 **일반 사무직을 위한 에이전트 사용법** 과정에서 쓰는 양식과 프롬프트입니다.
 
-👉 **[실습 페이지 열기](https://hunontop.github.io/proposal-workshop/)**
+👉 **[실습 자료 열기](https://hunontop.github.io/proposal-workshop/)** ·
+**[강의실 열기](https://hunontop.github.io/proposal-workshop/%EA%B0%95%EC%9D%98%EC%8B%A4.html)**(영상)
 
 ## 무엇이 있나
 
@@ -41,7 +42,13 @@
 
 ```bash
 python _build.py
+python _build_classroom.py
 ```
+
+`강의실.html`은 좌 플레이어 / 우 커리큘럼 사이드바 페이지입니다. 촬영이 끝난 편은
+`_build_classroom.py`의 `E`에 유튜브 ID를 넣으면 열립니다.
+**재생시간과 차례의 시작 초는 편집본에서 실측해서 넣습니다** — 비워 두면 화면에 안 나옵니다.
+영상은 **일부공개(unlisted)** 로 올립니다. 비공개(private)는 임베드가 깨집니다.
 
 `index.html`은 생성물입니다. 색은 이 저장소의 `skin.json`에서 읽습니다 — 강의 덱 색의 사본이고,
 갱신은 강의 저장소 쪽 동기화 스크립트가 밀어 넣습니다(이 저장소가 바깥 경로를 참조하지 않습니다).
