@@ -70,6 +70,11 @@ footer{max-width:1420px;margin:0 auto;padding:0 24px 60px;color:var(--gray);font
   var D = JSON.parse(document.getElementById("d").textContent), K = "pw-seen", cur = null, seen = {};
   try { seen = JSON.parse(localStorage.getItem(K) || "{}") || {}; } catch(e) {}
   function save(){ try { localStorage.setItem(K, JSON.stringify(seen)); } catch(e) {} }
+  function mmss(n){
+    var h = Math.floor(n / 3600), m = Math.floor(n % 3600 / 60), s = n % 60,
+        p = function(x){ return (x < 10 ? "0" : "") + x; };
+    return (h ? h + ":" + p(m) : m) + ":" + p(s);
+  }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
   function paint(){
@@ -99,7 +104,8 @@ footer{max-width:1420px;margin:0 auto;padding:0 24px 60px;color:var(--gray);font
       var jump = (e.vid && c.t != null)
         ? '<a href="https://www.youtube.com/watch?v=' + e.vid + '&t=' + c.t + 's" target="_blank" rel="noopener">' + esc(c.title) + '</a>'
         : esc(c.title);
-      return '<div class="ch"><em>' + esc(c.no) + '</em><span>' + jump + '</span><i>' + esc(c.slides) + '</i></div>';
+      var mark = (c.t != null) ? mmss(c.t) : c.slides;   // 시간이 들어오면 장 번호를 밀어낸다
+      return '<div class="ch"><em>' + esc(c.no) + '</em><span>' + jump + '</span><i>' + esc(mark) + '</i></div>';
     }).join("");
     document.getElementById("mf").innerHTML = e.files.length
       ? e.files.map(function(x){ return '<a href="' + x.href + '">' + esc(x.title) + '</a>'; }).join("")

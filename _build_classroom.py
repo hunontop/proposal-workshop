@@ -15,7 +15,8 @@
 촬영이 끝난 편은 `E`의 `vid` 자리에 유튜브 ID를 넣으면 그 편이 열린다.
 ⚠ **재생시간과 차례의 시작 초는 편집본에서 실측해서 넣는다.** 발표노트의 ⏱는 추정치라
 화면에 박으면 실제 영상과 어긋난다 — 정직 표기 위반이다(§H 선행 조건 2).
-**비워 두면 화면에 안 나온다.** 빌드할 때 미기입 항목을 알려 준다.
+**비워 두면 화면에 안 나온다** — 차례 오른쪽 끝은 시작 초가 들어올 때까지 장 번호를 대신 보인다.
+빌드할 때 미기입 항목을 알려 준다.
 
 ⚠ 유튜브는 **일부공개(unlisted)**로 올린다. 비공개(private)는 임베드가 깨진다.
 """
@@ -195,6 +196,11 @@ JS = """
   var D = JSON.parse(document.getElementById("d").textContent), K = "pw-seen", cur = null, seen = {};
   try { seen = JSON.parse(localStorage.getItem(K) || "{}") || {}; } catch(e) {}
   function save(){ try { localStorage.setItem(K, JSON.stringify(seen)); } catch(e) {} }
+  function mmss(n){
+    var h = Math.floor(n / 3600), m = Math.floor(n % 3600 / 60), s = n % 60,
+        p = function(x){ return (x < 10 ? "0" : "") + x; };
+    return (h ? h + ":" + p(m) : m) + ":" + p(s);
+  }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
   function paint(){
@@ -224,7 +230,8 @@ JS = """
       var jump = (e.vid && c.t != null)
         ? '<a href="https://www.youtube.com/watch?v=' + e.vid + '&t=' + c.t + 's" target="_blank" rel="noopener">' + esc(c.title) + '</a>'
         : esc(c.title);
-      return '<div class="ch"><em>' + esc(c.no) + '</em><span>' + jump + '</span><i>' + esc(c.slides) + '</i></div>';
+      var mark = (c.t != null) ? mmss(c.t) : c.slides;   // 시간이 들어오면 장 번호를 밀어낸다
+      return '<div class="ch"><em>' + esc(c.no) + '</em><span>' + jump + '</span><i>' + esc(mark) + '</i></div>';
     }).join("");
     document.getElementById("mf").innerHTML = e.files.length
       ? e.files.map(function(x){ return '<a href="' + x.href + '">' + esc(x.title) + '</a>'; }).join("")
