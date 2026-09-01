@@ -116,10 +116,10 @@ for e in DATA:
     meta = e["dur"] or ("" if ready else "촬영 준비 중")
     side += ('<button class="ep%s" data-n="%d" type="button">'
              '<span class="epn">%d편</span>'
-             '<span class="ept"><b>%s</b><i>%s%s</i></span>'
+             '<span class="ept"><b>%s</b>%s</span>'
              '<span class="epd" aria-hidden="true"></span></button>'
              % ("" if ready else " soon", e["n"], e["n"], H.escape(e["title"]),
-                H.escape(e["slides"]), (" · " + H.escape(meta)) if meta else ""))
+                ("<i>%s</i>" % H.escape(meta)) if meta else ""))
 
 CSS = """
 :root{--ink:{ink};--accent:{accent};--accent-deep:{deep};--bg:{bg};--paper:{paper};
@@ -219,7 +219,7 @@ JS = """
         '\\uC544\\uB798\\uC5D0\\uC11C \\uBBF8\\uB9AC \\uBCF4\\uC2E4 \\uC218 \\uC788\\uC2B5\\uB2C8\\uB2E4.</span></div>';
     }
     document.getElementById("mt").textContent = e.n + "\\uD3B8 \\u00B7 " + e.title;
-    document.getElementById("ms").textContent = "\\uB371 " + e.slides + (e.dur ? " \\u00B7 " + e.dur : "");
+    document.getElementById("ms").textContent = e.dur || "";
     document.getElementById("mc").innerHTML = e.chapters.map(function(c){
       var jump = (e.vid && c.t != null)
         ? '<a href="https://www.youtube.com/watch?v=' + e.vid + '&t=' + c.t + 's" target="_blank" rel="noopener">' + esc(c.title) + '</a>'
