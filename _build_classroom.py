@@ -20,7 +20,7 @@
 
 ⚠ 유튜브는 **일부공개(unlisted)**로 올린다. 비공개(private)는 임베드가 깨진다.
 """
-import pathlib, html as H, json
+import pathlib, html as H, json, re
 
 HERE = pathlib.Path(__file__).parent
 C = json.loads((HERE / "skin.json").read_text(encoding="utf-8"))["colors"]
@@ -28,6 +28,44 @@ C = json.loads((HERE / "skin.json").read_text(encoding="utf-8"))["colors"]
 
 def hx(k):
     return "#" + C[k]
+
+
+# ── 복사 버튼 ─────────────────────────────────────────────────────────────
+# 실습 자료 페이지(`_build.py`)와 **같은 규약**이다 — md의 펜스 코드블록을 수확하고
+# 라벨은 바로 앞의 ##/### 제목에서 가져온다. 연장통 정책: 복사가 1순위, 내려받기는 보관용.
+# ⚠ 지금은 **COPY_EPISODES에 든 편만** 버튼을 단다(2026-09-02 사용자 지시: 1·2편만).
+COPY_EPISODES = {1, 2}
+
+IC_COPY = ('<svg class="ic ic-c" viewBox="0 0 24 24" width="13" height="13" fill="none" '
+           'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+           'aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/>'
+           '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>')
+IC_DONE = ('<svg class="ic ic-d" viewBox="0 0 24 24" width="13" height="13" fill="none" '
+           'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" '
+           'aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>')
+
+_FENCE = re.compile(r"\n```[^\n]*\n(.*?)\n```", re.S)
+_HEAD = re.compile(r"^#{2,3}\s+(.+?)\s*$", re.M)
+
+
+def _label(raw, fallback):
+    if not raw:
+        return fallback
+    t = re.sub(r"[`*]", "", raw).strip()
+    t = re.sub(r"^\d+\.\s*", "", t)
+    return re.split(r"\s+—\s+", t)[0].strip() or fallback
+
+
+def copy_blocks(rel):
+    f = HERE / rel
+    if not f.is_file() or not rel.endswith(".md"):
+        return []
+    md = f.read_text(encoding="utf-8")
+    out = []
+    for m in _FENCE.finditer(md):
+        heads = _HEAD.findall(md[:m.start()])
+        out.append((_label(heads[-1] if heads else None, "프롬프트 전체"), m.group(1)))
+    return out
 
 
 TITLE = "AI 기초부터 업무 자동화까지"
@@ -106,9 +144,24 @@ E = [
     ("12-3", "과정에서 손에 든 것 · 마무리", "62~64장", None)], []),
 ]
 
+CLIP: list[str] = []
+
+
+def _files(no, fs):
+    out = []
+    for title, href in fs:
+        cps = []
+        if no in COPY_EPISODES:
+            for lab, body in copy_blocks(href):
+                cps.append({"lab": lab, "i": len(CLIP)})
+                CLIP.append(body)
+        out.append({"title": title, "href": href, "copy": cps})
+    return out
+
+
 DATA = [dict(n=n, title=t, slides=s, vid=v, dur=d,
              chapters=[dict(no=a, title=b, slides=c, t=e) for a, b, c, e in ch],
-             files=[dict(title=a, href=b) for a, b in fs])
+             files=_files(n, fs))
         for n, t, s, v, d, ch, fs in E]
 
 side = ""
@@ -163,6 +216,20 @@ h1{font-size:25px;margin:9px 0 4px;letter-spacing:-.5px}
  background:var(--wash);border:1px solid var(--line);border-radius:999px;padding:6px 14px}
 .mat a:hover{border-color:var(--accent);background:#fff}
 .mat p{color:var(--gray);font-size:13.5px;margin:0}
+/* 복사 버튼 — 실습 자료 페이지와 같은 문법(연장통 정책: 복사가 1순위) */
+.matrow{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px;
+ padding-top:10px;border-top:1px dashed var(--line)}
+.cp{display:inline-flex;align-items:center;gap:7px;font:inherit;font-size:12.5px;font-weight:700;
+ cursor:pointer;color:var(--accent-deep);background:var(--wash);border:1px solid var(--line);
+ border-radius:999px;padding:5px 13px 5px 11px;transition:.13s;line-height:1.3}
+.cp:hover{border-color:var(--accent);background:#fff}
+.cp:active{transform:translateY(1px)}
+.cp:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cp .ic{flex:0 0 auto;display:block}
+.cp .ic-d{display:none}
+.cp.done{background:var(--accent);border-color:var(--accent);color:#fff}
+.cp.done .ic-c{display:none}
+.cp.done .ic-d{display:block}
 aside{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;
  box-shadow:0 4px 14px rgba(0,0,0,.04);position:sticky;top:22px}
 aside h2{font-size:13px;letter-spacing:1px;color:var(--gray);margin:6px 8px 12px;font-weight:800}
@@ -193,7 +260,25 @@ footer{max-width:1420px;margin:0 auto;padding:0 24px 60px;color:var(--gray);font
 
 JS = """
 (function(){
-  var D = JSON.parse(document.getElementById("d").textContent), K = "pw-seen", cur = null, seen = {};
+  var D = JSON.parse(document.getElementById("d").textContent),
+      T = JSON.parse(document.getElementById("clip").textContent),
+      IC = document.getElementById("ic").textContent,
+      K = "pw-seen", cur = null, seen = {};
+  function put(s){
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(s);
+    var a = document.createElement("textarea");          // file:// · 구형 폴백
+    a.value = s; a.setAttribute("readonly", "");
+    a.style.cssText = "position:fixed;top:-9999px";
+    document.body.appendChild(a); a.select();
+    try { document.execCommand("copy"); } finally { document.body.removeChild(a); }
+  }
+  document.addEventListener("click", function(ev){
+    var b = ev.target.closest && ev.target.closest(".cp");
+    if (!b) return;
+    put(T[+b.dataset.i]);
+    b.classList.add("done");
+    setTimeout(function(){ b.classList.remove("done"); }, 1200);
+  });
   try { seen = JSON.parse(localStorage.getItem(K) || "{}") || {}; } catch(e) {}
   function save(){ try { localStorage.setItem(K, JSON.stringify(seen)); } catch(e) {} }
   function mmss(n){
@@ -234,7 +319,15 @@ JS = """
       return '<div class="ch"><em>' + esc(c.no) + '</em><span>' + jump + '</span><i>' + esc(mark) + '</i></div>';
     }).join("");
     document.getElementById("mf").innerHTML = e.files.length
-      ? e.files.map(function(x){ return '<a href="' + x.href + '">' + esc(x.title) + '</a>'; }).join("")
+      ? e.files.map(function(x){
+          var a = '<a href="' + x.href + '">' + esc(x.title) + '</a>';
+          if (!x.copy || !x.copy.length) return a;
+          var b = x.copy.map(function(c){
+            return '<button class="cp" type="button" data-i="' + c.i + '" title="\\uBCF5\\uC0AC: ' +
+                   esc(c.lab) + '">' + IC + '<span>' + esc(c.lab) + '</span></button>';
+          }).join("");
+          return a + '<div class="matrow">' + b + '</div>';
+        }).join("")
       : '<p>\\uC774 \\uD3B8\\uC5D0\\uB294 \\uB530\\uB85C \\uB0B4\\uB824\\uBC1B\\uC744 \\uC790\\uB8CC\\uAC00 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.</p>';
     paint();
     if (location.hash !== "#" + n) history.replaceState(null, "", "#" + n);
@@ -267,6 +360,9 @@ doc = ('<!doctype html><html lang="ko"><head><meta charset="utf-8">'
        '<footer>최상훈 · AI Educator &amp; AX Consultant</footer>'
        '<script type="application/json" id="d">' +
        json.dumps(DATA, ensure_ascii=False) + '</script>'
+       '<script type="application/json" id="clip">' +
+       json.dumps(CLIP, ensure_ascii=False) + '</script>'
+       '<script type="text/plain" id="ic">' + IC_COPY + IC_DONE + '</script>'
        '<script>' + JS + '</script></body></html>')
 
 out = HERE / "강의실.html"
