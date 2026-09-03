@@ -36,6 +36,13 @@ def hx(k):
 # ⚠ 지금은 **COPY_EPISODES에 든 편만** 버튼을 단다(2026-09-02 사용자 지시: 1·2편만).
 COPY_EPISODES = {1, 2}
 
+# ── 공개 범위 ─────────────────────────────────────────────────────────────
+# 이 페이지도 **홍보용**이다(2026-09-02 결정). 1·2편만 열고 나머지는 **자물쇠**다 —
+# 사이드바에서 누르면 편이 열리는 대신 **신청 페이지**로 간다.
+# ⚠ UI 표시일 뿐이다. 진짜 잠금은 로그인 사이트로 옮길 때 성립한다.
+OPEN_EPISODES = {1, 2}
+SIGNUP = "https://event-us.kr/aiintersyslec/event/134312"
+
 IC_COPY = ('<svg class="ic ic-c" viewBox="0 0 24 24" width="13" height="13" fill="none" '
            'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
            'aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/>'
@@ -159,14 +166,29 @@ def _files(no, fs):
     return out
 
 
-DATA = [dict(n=n, title=t, slides=s, vid=v, dur=d,
+# ⚠ 잠긴 편은 **DATA에서 링크·자료를 지운다.** 사이드바만 가리면 페이지 소스에
+#   유튜브 ID가 그대로 남아 자물쇠가 무의미해진다(홍보 페이지의 최소선).
+DATA = [dict(n=n, title=t, slides=s,
+             vid=(v if n in OPEN_EPISODES else None),
+             dur=(d if n in OPEN_EPISODES else None),
              chapters=[dict(no=a, title=b, slides=c, t=e) for a, b, c, e in ch],
-             files=_files(n, fs))
+             files=(_files(n, fs) if n in OPEN_EPISODES else []))
         for n, t, s, v, d, ch, fs in E]
+
+IC_LOCK = ('<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" '
+           'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+           '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>')
 
 side = ""
 for e in DATA:
     ready = bool(e["vid"])
+    if e["n"] not in OPEN_EPISODES:            # 잠금 — 누르면 신청 페이지로 나간다
+        side += ('<a class="ep lock" href="%s" target="_blank" rel="noopener">'
+                 '<span class="epn">%d편</span>'
+                 '<span class="ept"><b>%s</b><i>수강 신청하고 보기</i></span>'
+                 '<span class="epl">%s</span></a>'
+                 % (SIGNUP, e["n"], H.escape(e["title"]), IC_LOCK))
+        continue
     meta = e["dur"] or ("" if ready else "촬영 준비 중")
     side += ('<button class="ep%s" data-n="%d" type="button">'
              '<span class="epn">%d편</span>'
@@ -247,6 +269,11 @@ aside h2{font-size:13px;letter-spacing:1px;color:var(--gray);margin:6px 8px 12px
 .epd{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--line)}
 .ep.seen .epd{background:var(--accent);border-color:var(--accent)}
 .ep.soon{opacity:.62}
+a.ep.lock{text-decoration:none;opacity:.85}
+a.ep.lock:hover{background:var(--wash);border-color:var(--accent)}
+a.ep.lock .epn{background:var(--bg);color:var(--gray);border:1px dashed var(--line)}
+a.ep.lock .ept i{color:var(--accent-deep);font-weight:700}
+.epl{color:var(--gray);display:flex;align-items:center}
 .foot{margin:14px 8px 4px;padding-top:12px;border-top:1px dashed var(--line);color:var(--gray);
  font-size:12px;line-height:1.6}
 footer{max-width:1420px;margin:0 auto;padding:0 24px 60px;color:var(--gray);font-size:13px}

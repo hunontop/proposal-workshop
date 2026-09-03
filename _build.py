@@ -15,6 +15,14 @@ def hx(k):
 
 SITE = "https://hunontop.github.io/proposal-workshop/"
 
+# ── 공개 범위 ─────────────────────────────────────────────────────────────
+# 이 페이지는 **홍보용**이다(2026-09-02 결정). 1·2편 자료만 열어 두고, 나머지는
+# 목록에 제목·설명만 보이고 **자물쇠**가 걸린다 — 눌러도 파일이 아니라 신청 페이지로 간다.
+# ⚠ 자물쇠는 **UI 표시**다. 파일은 저장소에 그대로 있어 주소를 아는 사람은 받을 수 있다.
+#   진짜 잠금은 로그인 사이트로 옮길 때 성립한다(그때 이 files/를 그쪽으로 옮긴다).
+OPEN_TAGS = {"사전", "1편", "2편"}
+SIGNUP = "https://event-us.kr/aiintersyslec/event/134312"
+
 # ── 프롬프트 복사 블록 ────────────────────────────────────────────────────
 # 연장통 정책(공유뇌 ref/교안/연장통): 담는 것 = "프롬프트 원문(복붙)".
 # 짧은 프롬프트를 내려받게 하면 붙여넣기까지 손이 하나 더 든다 →
@@ -29,6 +37,11 @@ IC_COPY = ('<svg class="ic ic-c" viewBox="0 0 24 24" width="14" height="14" fill
 IC_DONE = ('<svg class="ic ic-d" viewBox="0 0 24 24" width="14" height="14" fill="none" '
            'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" '
            'aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>')
+
+IC_LOCK = ('<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" '
+           'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" '
+           'style="margin-right:6px;vertical-align:-2px"><rect x="3" y="11" width="18" height="11" rx="2"/>'
+           '<path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>')
 
 _FENCE = re.compile(r"\n```[^\n]*\n(.*?)\n```", re.S)
 _HEAD = re.compile(r"^#{2,3}\s+(.+?)\s*$", re.M)
@@ -145,8 +158,9 @@ CLIP = []          # 페이지에 심는 복사 대상 원문 (자기완결 — 
 blocks = ""
 for tag, name, items in SESSIONS:
     rows = ""
+    locked = tag not in OPEN_TAGS
     for title, href, desc, state in items:
-        cps = copy_blocks(href) if (state == "ready" and href) else []
+        cps = [] if locked else (copy_blocks(href) if (state == "ready" and href) else [])
         btns = ""
         for lab, body in cps:
             btns += (f'<button class="cp" type="button" data-i="{len(CLIP)}" '
@@ -155,7 +169,10 @@ for tag, name, items in SESSIONS:
             CLIP.append(body)
         crow = f'<div class="copyrow">{btns}</div>' if btns else ""
 
-        if state == "page" and href:
+        if locked:
+            act = (f'<a class="lock" href="{SIGNUP}" target="_blank" rel="noopener">'
+                   f'{IC_LOCK}수강 신청</a>')
+        elif state == "page" and href:
             act = f'<a class="get" href="{href}">열기</a>'
         elif state == "ready" and href:
             # 복사 블록이 있으면 내려받기는 원문 보관용으로 물러난다
@@ -164,7 +181,7 @@ for tag, name, items in SESSIONS:
         else:
             act = '<em class="wait">준비 중</em>'
 
-        soon = " soon" if not (state in ("ready", "page") and href) else ""
+        soon = " lockrow" if locked else (" soon" if not (state in ("ready", "page") and href) else "")
         rows += (f'<div class="item{soon}">'
                  f'<b>{H.escape(title)}</b><span>{H.escape(desc)}</span>'
                  f'<div class="acts">{act}</div>{crow}</div>')
@@ -214,6 +231,11 @@ a.get:hover{{filter:brightness(1.08)}}
 .sub{{background:transparent;color:var(--gray);border:1px solid var(--line)}}
 a.sub:hover{{border-color:var(--accent);color:var(--accent)}}
 .wait{{background:var(--bg);color:var(--gray);border:1px dashed var(--line)}}
+/* 잠금 — 홍보 페이지에서 1·2편 밖 자료는 신청 페이지로 보낸다 */
+a.lock{{background:var(--tab);color:#fff;display:inline-flex;align-items:center}}
+a.lock:hover{{filter:brightness(1.12)}}
+.item.lockrow{{opacity:.9;background:repeating-linear-gradient(135deg,transparent 0 10px,rgba(0,0,0,.012) 10px 20px)}}
+.item.lockrow b{{color:var(--gray)}}
 .item.soon{{opacity:.72}}
 /* 복사 버튼 — 짧은 프롬프트의 1순위 동선 */
 .copyrow{{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
